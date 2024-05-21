@@ -28,6 +28,7 @@ from .classifier_mdr import tpot_mdr_classifier_config_dict
 from .classifier_sparse import classifier_config_sparse
 from .classifier_nn import classifier_config_nn
 from .classifier import classifier_config_dict
+from .clustering import clustering_config_dict
 from .regressor_light import regressor_config_dict_light
 from .regressor_mdr import tpot_mdr_regressor_config_dict
 from .regressor_sparse import regressor_config_sparse
