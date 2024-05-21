@@ -24,5 +24,5 @@ License along with TPOT. If not, see <http://www.gnu.org/licenses/>.
 """
 
 from ._version import __version__
-from .tpot import TPOTClassifier, TPOTRegressor
+from .tpot import TPOTClassifier, TPOTRegressor, TPOTClustering
 from .driver import main
