@@ -135,6 +135,18 @@ def _is_transformer(estimator):
 def _is_resampler(estimator):
     return hasattr(estimator, "fit_resample")
 
+def _is_clusterer(estimator):
+    """Return True if the given estimator is (probably) a cluster.
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+    Returns
+    -------
+    out : bool
+        True if estimator is a cluster and False otherwise.
+    """
+    return getattr(estimator, "_estimator_type", None) == "clusterer"
 
 def ARGTypeClassFactory(classname, prange, BaseClass=ARGType):
     """Dynamically create parameter type class.
@@ -204,6 +216,9 @@ def TPOTOperatorClassFactory(
         elif is_regressor(op_obj):
             class_profile["root"] = True
             optype = "Regressor"
+        elif _is_clusterer(op_obj):
+            class_profile["root"] = True
+            optype = "Clusterer"
         elif _is_selector(op_obj):
             optype = "Selector"
         elif _is_transformer(op_obj):
@@ -326,6 +341,7 @@ def TPOTOperatorClassFactory(
                             issubclass(doptype, BaseEstimator)
                             or is_classifier(doptype)
                             or is_regressor(doptype)
+                            or _is_clusterer(doptype)
                             or _is_transformer(doptype)
                             or _is_resampler(doptype)
                             or issubclass(doptype, Kernel)

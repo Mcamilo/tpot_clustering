@@ -102,4 +102,3 @@ class TPOTClustering(TPOTBase):
     def _init_pretest(self, features, target=None):
         self.pretest_X = features
         self.pretest_y = target
-        pass
