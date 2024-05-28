@@ -135,6 +135,99 @@ testing_features = imputer.transform(testing_features)
 
     return pipeline_text
 
+def export_unsupervised_pipeline(
+    exported_pipeline,
+    operators,
+    pset,
+    impute=False,
+    pipeline_score=None,
+    random_state=None,
+    data_file_path="",
+):
+    """Generate source code for a Unsupervised TPOT Pipeline.
+
+    Parameters
+    ----------
+    exported_pipeline: deap.creator.Individual
+        The pipeline that is being exported
+    operators:
+        List of operator classes from operator library
+    pipeline_score:
+        Optional pipeline score to be saved to the exported file
+    impute: bool (False):
+        If impute = True, then adda a imputation step.
+    random_state: integer
+        Random seed in train_test_split function and exported pipeline.
+    data_file_path: string (default: '')
+        By default, the path of input dataset is 'PATH/TO/DATA/FILE' by default.
+        If data_file_path is another string, the path will be replaced.
+
+    Returns
+    -------
+    pipeline_text: str
+        The source code representing the pipeline
+
+    """
+    # particular imports for unsupervised
+    unsupervised_import_statements = ["""from sklearn.preprocessing import StandardScaler""","""from sklearn.decomposition import PCA"""]
+
+    # Unroll the nested function calls into serial code
+    pipeline_tree = expr_to_tree(exported_pipeline, pset)
+
+    # Have the exported code import all of the necessary modules and functions
+    pipeline_text = generate_import_code(
+        exported_pipeline, operators, impute, random_state
+    )
+
+    pipeline_text = pipeline_text.replace("""from sklearn.model_selection import train_test_split""", """
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+""")
+
+    for statement in unsupervised_import_statements:
+        if statement not in pipeline_text:
+            pipeline_text += f"\n{statement}"
+
+
+    pipeline_code = pipeline_code_wrapper(
+        generate_export_pipeline_code(pipeline_tree, operators), random_state, unsupervised=True
+    )
+
+    if pipeline_code.count("FunctionTransformer(copy)"):
+        pipeline_text += """from sklearn.preprocessing import FunctionTransformer
+from copy import copy
+"""
+    if not data_file_path:
+        data_file_path = "PATH/TO/DATA/FILE"
+
+    pipeline_text += """
+# NOTE: Make sure that the csv file with the doesn't contain targets
+training_features = pd.read_csv('{}', dtype=np.float64)
+""".format(
+        data_file_path
+    )
+
+    # Add the imputation step if it was used by TPOT
+    if impute:
+        pipeline_text += """
+imputer = SimpleImputer(strategy="median")
+imputer.fit(training_features)
+training_features = imputer.transform(training_features)
+testing_features = imputer.transform(testing_features)
+"""
+
+    if pipeline_score is not None:
+        pipeline_text += "\n# Average CV score on the training set was: {}".format(
+            pipeline_score
+        )
+    pipeline_text += "\n"
+
+    # Replace the function calls with their corresponding Python code
+    pipeline_text += pipeline_code
+
+    return pipeline_text
+
 
 def expr_to_tree(ind, pset):
     """Convert the unstructured DEAP pipeline into a tree data-structure.
@@ -299,7 +392,7 @@ def _starting_imports(operators, operators_used, pipeline_module):
         return {"sklearn.model_selection": ["train_test_split"]}
 
 
-def pipeline_code_wrapper(pipeline_code, random_state=None):
+def pipeline_code_wrapper(pipeline_code, random_state=None, unsupervised=False):
     """Generate code specific to the execution of the sklearn pipeline.
 
     Parameters
@@ -345,7 +438,37 @@ results = exported_pipeline.predict(testing_features)
 """.format(
                 pipeline_code, random_state
             )
+    if unsupervised:
+        exported_code = """
+# Standardize the data
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(training_features)
 
+# Perform PCA
+pca = PCA(n_components=2)
+pca_data = pca.fit_transform(scaled_data)
+        
+exported_pipeline = {}
+clusters = exported_pipeline.fit_predict(pca_data)
+
+# Plot PCA
+plt.figure(figsize=(10, 7))
+plt.scatter(pca_data[:, 0], pca_data[:, 1], c=clusters, cmap='viridis', marker='o', edgecolor='k', s=100)
+if hasattr(exported_pipeline,"cluster_centers_"):
+    centroids = exported_pipeline.cluster_centers_
+    plt.scatter(centroids[:, 0], centroids[:, 1], c='red', marker='X', s=200, alpha=0.75)
+plt.title('PCA of the Dataset with the exported clustering pipeline')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.grid(True)
+
+# Save the PCA plot
+plt.savefig('pca_plot.png')
+
+print("PCA plot saved as 'pca_plot.png'.")
+""".format(
+           pipeline_code
+        )
     return exported_code
 
 

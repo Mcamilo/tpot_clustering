@@ -63,6 +63,7 @@ from ._version import __version__
 from .operator_utils import TPOTOperatorClassFactory, Operator, ARGType
 from .export_utils import (
     export_pipeline,
+    export_unsupervised_pipeline,
     expr_to_tree,
     generate_pipeline_code,
     set_param_recursive,
@@ -1295,16 +1296,26 @@ class TPOTBase(BaseEstimator):
             raise RuntimeError(
                 "Export: A pipeline has not yet been optimized. Please call fit() first."
             )
-
-        to_write = export_pipeline(
-            self._optimized_pipeline,
-            self.operators,
-            self._pset,
-            self._imputed,
-            self._optimized_pipeline_score,
-            self.random_state,
-            data_file_path=data_file_path,
-        )
+        if self.clustering:
+            to_write = export_unsupervised_pipeline(
+                self._optimized_pipeline,
+                self.operators,
+                self._pset,
+                self._imputed,
+                self._optimized_pipeline_score,
+                self.random_state,
+                data_file_path=data_file_path,
+            )
+        else:    
+            to_write = export_pipeline(
+                self._optimized_pipeline,
+                self.operators,
+                self._pset,
+                self._imputed,
+                self._optimized_pipeline_score,
+                self.random_state,
+                data_file_path=data_file_path,
+            )
 
         if output_file_name != "":
             with open(output_file_name, "w") as output_file:
