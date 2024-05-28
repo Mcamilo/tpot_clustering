@@ -1069,7 +1069,7 @@ class TPOTBase(BaseEstimator):
 
         return self.predict(features)
 
-    def score(self, testing_features, testing_target):
+    def score(self, testing_features, testing_target=None):
         """Return the score on the given testing data using the user-specified scoring function.
 
         Parameters
@@ -1089,7 +1089,7 @@ class TPOTBase(BaseEstimator):
             raise RuntimeError(
                 "Score: A pipeline has not yet been optimized. Please call fit() first."
             )
-
+        
         testing_features, testing_target = self._check_dataset(
             testing_features, testing_target, sample_weight=None
         )
@@ -1104,11 +1104,17 @@ class TPOTBase(BaseEstimator):
             raise RuntimeError(
                 "The scoring function should either be the name of a scikit-learn scorer or a scorer object"
             )
-        score = scorer(
-            self.fitted_pipeline_,
-            testing_features.astype(np.float64),
-            testing_target.astype(np.float64),
-        )
+        if testing_target is None:
+            score = scorer(
+                self.fitted_pipeline_,
+                testing_features.astype(np.float64),
+            )
+        else:
+            score = scorer(
+                self.fitted_pipeline_,
+                testing_features.astype(np.float64),
+                testing_target.astype(np.float64),
+            )
         return score
 
 
