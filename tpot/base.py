@@ -341,7 +341,7 @@ class TPOTBase(BaseEstimator):
                         "choose a valid scoring function from the TPOT "
                         "documentation.".format(scoring)
                     )
-                self.scoring_function = scoring
+                self.scoring_function = SCORERS[scoring]
             elif callable(scoring):
                 # Heuristic to ensure user has not passed a metric
                 module = getattr(scoring, "__module__", None)
@@ -685,7 +685,7 @@ class TPOTBase(BaseEstimator):
         """
         raise ValueError("Use TPOTClassifier or TPOTRegressor")
 
-    def fit(self, features, target, sample_weight=None, groups=None):
+    def fit(self, features, target=None, sample_weight=None, groups=None):
         """Fit an optimized machine learning pipeline.
 
         Uses genetic programming to optimize a machine learning pipeline that
@@ -724,8 +724,9 @@ class TPOTBase(BaseEstimator):
 
         """
         self._fit_init()
+        
         features, target = self._check_dataset(features, target, sample_weight)
-
+        
         self._init_pretest(features, target)
 
         # Randomly collect a subsample of training samples for pipeline optimization process.
@@ -961,7 +962,7 @@ class TPOTBase(BaseEstimator):
             # If user passes CTRL+C in initial generation, self._pareto_front (halloffame) shoule be not updated yet.
             # need raise RuntimeError because no pipeline has been optimized
             raise RuntimeError(
-                "A pipeline has not yet been optimized. Please call fit() first."
+                "Update top pipeline: A pipeline has not yet been optimized. Please call fit() first."
             )
 
     def _summary_of_best_pipeline(self, features, target):
@@ -1035,10 +1036,10 @@ class TPOTBase(BaseEstimator):
         """
         if not self.fitted_pipeline_:
             raise RuntimeError(
-                "A pipeline has not yet been optimized. Please call fit() first."
+                "Predict: A pipeline has not yet been optimized. Please call fit() first."
             )
 
-        features = self._check_dataset(features, target=None, sample_weight=None)
+        features,_ = self._check_dataset(features, target=None, sample_weight=None)
 
         return self.fitted_pipeline_.predict(features)
 
@@ -1086,7 +1087,7 @@ class TPOTBase(BaseEstimator):
         """
         if self.fitted_pipeline_ is None:
             raise RuntimeError(
-                "A pipeline has not yet been optimized. Please call fit() first."
+                "Score: A pipeline has not yet been optimized. Please call fit() first."
             )
 
         testing_features, testing_target = self._check_dataset(
@@ -1114,7 +1115,7 @@ class TPOTBase(BaseEstimator):
     def _check_proba(self):
         if not hasattr(self, 'fitted_pipeline_'):
             raise AttributeError(
-                "A pipeline has not yet been optimized. Please call fit() first."
+                "Check prob: A pipeline has not yet been optimized. Please call fit() first."
             )
             
         else:
@@ -1141,7 +1142,7 @@ class TPOTBase(BaseEstimator):
 
         """
     
-        features = self._check_dataset(features, target=None, sample_weight=None)
+        features,_ = self._check_dataset(features, target=None, sample_weight=None)
         return self.fitted_pipeline_.predict_proba(features)
 
     def clean_pipeline_string(self, individual):
@@ -1286,7 +1287,7 @@ class TPOTBase(BaseEstimator):
         """
         if self._optimized_pipeline is None:
             raise RuntimeError(
-                "A pipeline has not yet been optimized. Please call fit() first."
+                "Export: A pipeline has not yet been optimized. Please call fit() first."
             )
 
         to_write = export_pipeline(
@@ -1393,9 +1394,9 @@ class TPOTBase(BaseEstimator):
             else:
                 X = check_array(features, accept_sparse=True, dtype=None)
                 if self._imputed:
-                    return X
+                    return X, None
                 else:
-                    return features
+                    return features, None
         except (AssertionError, ValueError):
             raise ValueError(
                 "Error: Input data is not in a valid format. Please confirm "
@@ -1473,7 +1474,7 @@ class TPOTBase(BaseEstimator):
         return stats
 
     def _evaluate_individuals(
-        self, population, features, target, sample_weight=None, groups=None
+        self, population, features, target=None, sample_weight=None, groups=None
     ):
         """Determine the fit of the provided individuals.
 
@@ -1515,6 +1516,7 @@ class TPOTBase(BaseEstimator):
         cv = check_cv(self.cv, target, classifier=self.classification)
 
         # Make the partial function that will be called below
+        
         partial_wrapped_cross_val_score = partial(
             _wrapped_cross_val_score,
             features=features,
@@ -1539,6 +1541,7 @@ class TPOTBase(BaseEstimator):
                     val = partial_wrapped_cross_val_score(
                         sklearn_pipeline=sklearn_pipeline
                     )
+                    # print(f"VAL: {val}")
                     result_score_list = self._update_val(val, result_score_list)
             else:
                 # chunk size for pbar update

@@ -25,7 +25,12 @@ License along with TPOT. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from sklearn.metrics import get_scorer, get_scorer_names, make_scorer
-
+from sklearn.metrics.cluster._unsupervised import (
+    calinski_harabasz_score,
+    davies_bouldin_score,
+    silhouette_samples,
+    silhouette_score,
+)
 
 def balanced_accuracy(y_true, y_pred):
     """Default scoring function: balanced accuracy.
@@ -68,6 +73,24 @@ def balanced_accuracy(y_true, y_pred):
 
     return np.mean(all_class_accuracies)
 
+class UnsupervisedScorer:
+    def __init__(self, metric) -> None:
+        self.metric = metric
 
+    def __call__(self, estimator, X):
+        try:
+            cluster_labels = estimator.fit_predict(X)
+            return self.metric(X, cluster_labels) if len(set(cluster_labels)) > 1 else -float('inf') 
+        except Exception as e:
+            raise TypeError(f"{self.metric.__name__} is not a valid unsupervised metric function")
+        
 SCORERS = {name: get_scorer(name) for name in get_scorer_names()}
+
+# check make_scorer 'greater_is_better'
 SCORERS['balanced_accuracy'] = make_scorer(balanced_accuracy)
+
+SCORERS['silhouette_score'] = UnsupervisedScorer(silhouette_score)
+SCORERS['davies_bouldin_score'] = UnsupervisedScorer(davies_bouldin_score)
+SCORERS['calinski_harabasz_score'] = UnsupervisedScorer(calinski_harabasz_score)
+SCORERS['silhouette_samples'] = UnsupervisedScorer(silhouette_samples)
+
