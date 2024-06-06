@@ -15,8 +15,7 @@ Package information: [![Python 3.7](https://img.shields.io/badge/python-3.7-blue
 </p>
 
 ---
-To try the ![NEW!](https://raw.githubusercontent.com/EpistasisLab/tpot/master/images/NEW-small.gif "NEW!") TPOT2 (*alpha*) please go [here](https://github.com/EpistasisLab/tpot2)!
-
+Welcome to the new fork of the TPOT framework, now enhanced to support clustering! This extension enables TPOT to optimize clustering algorithms by maximizing key evaluation metrics such as the Silhouette score, Davies-Bouldin score, and Calinski-Harabasz score. With this addition, TPOT can now automatically discover the optimal clustering pipelines, making it a powerful tool for unsupervised learning tasks. Whether you're dealing with customer segmentation, anomaly detection, or any other clustering problem, this forked version of TPOT streamlines the process, ensuring you achieve the best possible clustering performance with minimal manual intervention.
 - - - -
 
 **TPOT** stands for **T**ree-based **P**ipeline **O**ptimization **T**ool. Consider TPOT your **Data Science Assistant**. TPOT is a Python Automated Machine Learning tool that optimizes machine learning pipelines using genetic programming.
@@ -56,6 +55,70 @@ TPOT can be used [on the command line](http://epistasislab.github.io/tpot/using/
 Click on the corresponding links to find more information on TPOT usage in the documentation.
 
 ## Examples
+### Clustering
+
+Now, TPOT can optimize solutions for unsupervised clustering problems using the evaluation metrics provided by scikit-learn to synthesize optimal pipelines, namely `silhouette_score`, `davies_bouldin_score`, and `calinski_harabasz_score`. Below is a minimal working example with the sklearn's breast cancer dataset.
+
+```python 
+import pandas as pd
+from tpot import TPOTClustering
+from sklearn.datasets import load_breast_cancer
+
+data = load_breast_cancer().data
+scoring = "silhouette_score"
+
+tpot_clustering = TPOTClustering(generations=5, population_size=50, verbosity=2, random_state=42, scoring=scoring)
+tpot_clustering.fit(data)
+print(tpot_clustering.score(data))
+tpot_clustering.export(f"tpot_clustering_{scoring}.py")
+```
+The generated code in `tpot_clustering_silhouette_score.py` includes the optimized pipeline, along with a PCA component to visualize the partitionings of the dataset:
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+
+# NOTE: Make sure that the csv file with the doesn't contain targets
+training_features = pd.read_csv('PATH/TO/DATA/FILE', dtype=np.float64)
+# Average CV score on the training set was: 0.7072801240568758
+
+# Standardize the data
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(training_features)
+
+# Perform PCA
+pca = PCA(n_components=2)
+pca_data = pca.fit_transform(scaled_data)
+        
+exported_pipeline = KMeans(init="random", n_clusters=2)
+clusters = exported_pipeline.fit_predict(pca_data)
+
+# Plot PCA
+plt.figure(figsize=(10, 7))
+plt.scatter(pca_data[:, 0], pca_data[:, 1], c=clusters, cmap='viridis', marker='o', edgecolor='k', s=100)
+if hasattr(exported_pipeline,"cluster_centers_"):
+    centroids = exported_pipeline.cluster_centers_
+    plt.scatter(centroids[:, 0], centroids[:, 1], c='red', marker='X', s=200, alpha=0.75)
+plt.title('PCA of the Dataset with the exported clustering pipeline')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.grid(True)
+
+# Save the PCA plot
+plt.savefig('pca_plot.png')
+
+print("PCA plot saved as 'pca_plot.png'.")
+
+```
+
+Optimizing a clustering pipeline for different metrics such as the Silhouette score or the Davies-Bouldin score can lead to variations in the resulting clusters due to the distinct ways these metrics evaluate clustering quality, make sure you select a metric that better suit your needs:
+
+![tpot clustering for different CVIs](images/tpot-clustering.png)
 
 ### Classification
 
