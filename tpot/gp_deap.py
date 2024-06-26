@@ -465,7 +465,8 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
                                          parameters=None,
                                          error_score='raise',
                                          fit_params=sample_weight_dict,
-                                         score_params=None)
+                                         score_params=None
+                                         )
                                     for train, test in cv_iter]
                 if isinstance(scores[0], list): #scikit-learn <= 0.23.2
                     CV_score = np.array(scores)[:, 0]
